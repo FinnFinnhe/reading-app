@@ -11,7 +11,7 @@
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
             background-color: #ebe8e0; 
-            background-image: url('base3.png'); /* 妳的 Banner 圖檔，若是 jpg 請改為 base.jpg */
+            background-image: url('base3.png'); 
             background-size: 100% auto; 
             background-repeat: no-repeat;
             background-position: top center;
@@ -42,11 +42,18 @@
 
         <main class="flex-1">
             <div class="glass-card rounded-[1rem] shadow-xl border border-white/40 p-4 mb-3 text-center relative">
+                <div v-if="loading" class="absolute top-2 right-3 text-[9px] text-emerald-600 font-bold animate-pulse">☁️ 雲端同步中...</div>
+                
                 <p class="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">可購書總額度</p>
                 <div class="text-7xl font-black mb-3" :class="currentUser === 'S' ? 'text-slate-500' : 'text-[#5c4033]'">
                     {{ Math.floor(currentData.points / 2) }}
                 </div>
-                <p class="text-[11px] text-stone-400 font-bold tracking-tight">累積點數：{{ currentData.points }}</p>
+                
+                <div class="flex justify-center items-center gap-4 text-[11px] text-stone-400 font-bold tracking-tight mt-1">
+                    <span>累積點數：{{ currentData.points }}</span>
+                    <span class="text-stone-300">|</span>
+                    <span class="text-emerald-600">今年閱讀量：{{ currentYearCount }} 本</span>
+                </div>
             </div>
 
             <div class="space-y-1.5">
@@ -92,9 +99,9 @@
                     <input v-model="form.publisher" placeholder="出版社" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none">
                     <div class="flex gap-3 pt-4">
                         <button @click="showForm = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
-                        <button @click="submitBook" 
+                        <button @click="submitBook" :disabled="loading"
                                 :class="currentUser === 'S' ? 'bg-slate-500' : 'bg-[#5c4033]'"
-                                class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg">確認送出</button>
+                                class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg disabled:opacity-50">確認送出</button>
                     </div>
                 </div>
             </div>
@@ -119,9 +126,9 @@
                 
                 <div class="flex gap-3">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
-                    <button @click="handleRedeem" 
+                    <button @click="handleRedeem" :disabled="loading"
                             :class="currentUser === 'S' ? 'bg-slate-500' : 'bg-[#5c4033]'"
-                            class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg">確認兌換</button>
+                            class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg disabled:opacity-50">確認兌換</button>
                 </div>
             </div>
         </div>
@@ -130,6 +137,7 @@
 
     <script>
         const { createApp } = Vue;
+        // 🌟 已自動帶入妳專屬的 Google Apps Script 網址
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwhK6C80FggOvsiN9laA96n4jb1A8m0mbRWywZU0urIiR7oKL4NGUwRsW73ciG64E49/exec';
 
         createApp({
@@ -145,8 +153,49 @@
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
             },
-            computed: { currentData() { return this.db[this.currentUser]; } },
+            computed: { 
+                currentData() { return this.db[this.currentUser]; },
+                currentYearCount() {
+                    if (!this.currentData || !this.currentData.history) return 0;
+                    const currentYear = new Date().getFullYear().toString();
+                    return this.currentData.history.filter(item => {
+                        const hasYear = item.date && item.date.includes(currentYear);
+                        const isAddPoint = item.action === '讀書加點';
+                        return hasYear && isAddPoint;
+                    }).length;
+                }
+            },
             methods: {
+                async fetchFromCloud() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch(GAS_URL);
+                        const resData = await response.json();
+                        if (resData.success && resData.data) {
+                            const newDb = { S: { points: 0, history: [] }, F: { points: 0, history: [] } };
+                            
+                            resData.data.forEach(item => {
+                                const user = item.user;
+                                if (newDb[user]) {
+                                    newDb[user].history.push(item);
+                                    if (item.action === '讀書加點') {
+                                        newDb[user].points += 1;
+                                    } else if (item.action === '扣點') {
+                                        const match = item.publisher.match(/消耗 (\d+) 點/);
+                                        const cost = match ? parseInt(match[1]) : 2;
+                                        newDb[user].points -= cost;
+                                    }
+                                }
+                            });
+                            this.db = newDb;
+                            localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
+                        }
+                    } catch (e) {
+                        console.error("雲端讀取失敗，使用本地暫存:", e);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
                 async syncToCloud(payload) {
                     this.loading = true;
                     try {
@@ -157,12 +206,13 @@
                 async submitBook() {
                     if (!this.form.title.trim()) return alert('請輸入書名');
                     const data = { ...this.form, action: '讀書加點', user: this.currentUser, date: new Date().toLocaleDateString('zh-TW') };
-                    await this.syncToCloud(data);
+                    
+                    this.showForm = false;
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
-                    localStorage.setItem('sf_reading_project_final_force', JSON.stringify(this.db));
-                    this.form = { title: '', author: '', publisher: '' };
-                    this.showForm = false;
+                    
+                    await this.syncToCloud(data);
+                    await this.fetchFromCloud();
                 },
                 openRedeemModal() {
                     this.redeemCount = 1;
@@ -184,17 +234,18 @@
                         publisher: `消耗 ${totalCost} 點`
                     };
                     
-                    await this.syncToCloud(data);
                     this.currentData.points -= totalCost;
                     this.currentData.history.push(data);
-                    localStorage.setItem('sf_reading_project_final_force', JSON.stringify(this.db));
+                    
+                    await this.syncToCloud(data);
+                    await this.fetchFromCloud();
                 }
             },
             mounted() {
-                const saved = localStorage.getItem('sf_reading_project_final_force') || 
-                              localStorage.getItem('sf_reading_project_final') || 
-                              localStorage.getItem('sf_reading_v2');
+                const saved = localStorage.getItem('sf_reading_project_sync') || localStorage.getItem('sf_reading_project_final_force');
                 if (saved) this.db = JSON.parse(saved);
+                
+                this.fetchFromCloud();
             }
         }).mount('#app')
     </script>
