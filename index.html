@@ -108,23 +108,26 @@
         </div>
 
         <div v-if="showRedeemModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-            <div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl text-center">
-                <h3 class="text-lg font-black mb-2 uppercase tracking-tight">兌換購書額度</h3>
-                <p class="text-xs text-stone-400 mb-4">目前點數可換 {{ Math.floor(currentData.points / 2) }} 本書</p>
+            <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl text-center max-h-[85vh] flex flex-col">
+                <h3 class="text-lg font-black mb-1 uppercase tracking-tight">兌換購書額度</h3>
+                <p class="text-xs text-stone-400 mb-3">目前點數可換 {{ Math.floor(currentData.points / 2) }} 本書</p>
                 
-                <div class="flex items-center justify-center gap-6 mb-4">
-                    <button @click="redeemCount > 1 ? redeemCount-- : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">-</button>
-                    <span class="text-4xl font-black">{{ redeemCount }}</span>
-                    <button @click="redeemCount < Math.floor(currentData.points / 2) ? redeemCount++ : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">+</button>
+                <div class="flex items-center justify-center gap-6 mb-3">
+                    <button @click="changeRedeemCount(-1)" class="w-10 h-10 rounded-full border-2 border-stone-100 text-xl font-bold flex items-center justify-center active:bg-stone-50">-</button>
+                    <span class="text-3xl font-black w-12">{{ redeemCount }}</span>
+                    <button @click="changeRedeemCount(1)" class="w-10 h-10 rounded-full border-2 border-stone-100 text-xl font-bold flex items-center justify-center active:bg-stone-50">+</button>
                 </div>
                 
-                <div class="mb-4">
-                    <input v-model="redeemBookTitle" placeholder="打算買什麼書呢？(選填)" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-xs outline-none text-center border border-stone-100">
+                <div class="flex-1 overflow-y-auto my-2 pr-1 space-y-2 text-left max-h-[30vh]">
+                    <div v-for="i in redeemCount" :key="i">
+                        <label class="text-[10px] font-bold text-stone-400 block mb-0.5 ml-1">第 {{ i }} 本預計購買書名 (選填)</label>
+                        <input v-model="redeemBooks[i - 1]" :placeholder="'書名 ' + i" class="w-full bg-stone-50 px-4 py-2.5 rounded-xl text-xs outline-none border border-stone-100 focus:border-stone-200">
+                    </div>
                 </div>
 
-                <p class="text-xs font-bold mb-5 text-rose-500">將消耗 {{ redeemCount * 2 }} 點</p>
+                <p class="text-xs font-bold my-3 text-rose-500">將消耗 {{ redeemCount * 2 }} 點</p>
                 
-                <div class="flex gap-3">
+                <div class="flex gap-3 pt-2 border-t border-stone-50">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
                     <button @click="handleRedeem" :disabled="loading"
                             :class="currentUser === 'S' ? 'bg-slate-500' : 'bg-[#5c4033]'"
@@ -147,7 +150,7 @@
                     showForm: false,
                     showRedeemModal: false,
                     redeemCount: 1,
-                    redeemBookTitle: '',
+                    redeemBooks: [''], // 🌟 用陣列來裝多本書名
                     form: { title: '', author: '', publisher: '' },
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
@@ -210,7 +213,6 @@
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
                     
-                    // 🌟 修正：點完送出後，立刻清空輸入框，不留上一本資料
                     this.form = { title: '', author: '', publisher: '' };
                     
                     await this.syncToCloud(data);
@@ -218,15 +220,32 @@
                 },
                 openRedeemModal() {
                     this.redeemCount = 1;
-                    this.redeemBookTitle = '';
+                    this.redeemBooks = ['']; // 重置為一個空輸入框
                     this.showRedeemModal = true;
+                },
+                // 🌟 控制數量加減，並動態調整輸入框陣列長度
+                changeRedeemCount(delta) {
+                    const maxCount = Math.floor(this.currentData.points / 2);
+                    const newCount = this.redeemCount + delta;
+                    if (newCount >= 1 && newCount <= maxCount) {
+                        this.redeemCount = newCount;
+                        // 如果數量變多，補齊陣列空位；如果變少，切斷多出的部分
+                        if (this.redeemBooks.length < newCount) {
+                            while (this.redeemBooks.length < newCount) this.redeemBooks.push('');
+                        } else {
+                            this.redeemBooks = this.redeemBooks.slice(0, newCount);
+                        }
+                    }
                 },
                 async handleRedeem() {
                     const totalCost = this.redeemCount * 2;
                     if (this.currentData.points < totalCost) return alert('點數不足');
                     
                     this.showRedeemModal = false;
-                    const bookNote = this.redeemBookTitle.trim() ? ` 📘 預計購買：${this.redeemBookTitle.trim()}` : '';
+                    
+                    // 🌟 過濾並整理多本書名，用逗號串接起來
+                    const validBooks = this.redeemBooks.map(b => b.trim()).filter(b => b !== '');
+                    const bookNote = validBooks.length > 0 ? ` 📘 預計購買：${validBooks.join('、')}` : '';
                     
                     const data = { 
                         title: `兌換額度 (${this.redeemCount}本)${bookNote}`, 
