@@ -52,7 +52,7 @@
                 <div class="flex justify-center items-center gap-4 text-[11px] text-stone-400 font-bold tracking-tight mt-1">
                     <span>累積點數：{{ currentData.points }}</span>
                     <span class="text-stone-300">|</span>
-                    <span class="text-stone-300">今年閱讀量：{{ currentYearCount }} 本</span>
+                    <span>今年閱讀量：{{ currentYearCount }} 本</span>
                 </div>
             </div>
 
@@ -137,7 +137,6 @@
 
     <script>
         const { createApp } = Vue;
-        // 🌟 已自動帶入妳專屬的 Google Apps Script 網址
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwhK6C80FggOvsiN9laA96n4jb1A8m0mbRWywZU0urIiR7oKL4NGUwRsW73ciG64E49/exec';
 
         createApp({
@@ -210,6 +209,9 @@
                     this.showForm = false;
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
+                    
+                    // 🌟 修正：點完送出後，立刻清空輸入框，不留上一本資料
+                    this.form = { title: '', author: '', publisher: '' };
                     
                     await this.syncToCloud(data);
                     await this.fetchFromCloud();
