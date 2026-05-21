@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght=400;500;700;900&display=swap');
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
             background-color: #ebe8e0; 
@@ -80,7 +80,8 @@
                             <div>
                                 <div class="font-bold text-stone-700 leading-tight">{{ item.title }}</div>
                                 <div class="text-[9px] text-stone-400 mt-0.5">
-                                    <span>{{ item.publisher ? item.publisher : '兌換紀錄' }}</span>
+                                    <span v-if="item.action === '讀書加點'">{{ item.author ? item.author : '無作者' }} / {{ item.publisher ? item.publisher : '無出版社' }}</span>
+                                    <span v-else>{{ item.buyBook || '兌換紀錄' }}</span>
                                 </div>
                             </div>
                             <span class="text-[8px] font-bold px-1.5 py-0.5 bg-white/60 rounded text-stone-500">{{ item.action }}</span>
@@ -141,6 +142,7 @@
 
     <script>
         const { createApp } = Vue;
+        // 🌟 這裡已換上最新的新部署網址
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwhK6C80FggOvsiN9laA96n4jb1A8m0mbRWywZU0urIiR7oKL4NGUwRsW73ciG64E49/exec';
 
         createApp({
@@ -163,7 +165,6 @@
                     const currentYear = new Date().getFullYear().toString();
                     return this.currentData.history.filter(item => {
                         const hasYear = item.date && item.date.includes(currentYear);
-                        // 🌟 回歸乾淨邏輯：精準比對 action 欄位
                         return hasYear && item.action === '讀書加點';
                     }).length;
                 }
@@ -176,15 +177,17 @@
                         const resData = await response.json();
                         if (resData.success && resData.data) {
                             const newDb = { S: { points: 0, history: [] }, F: { points: 0, history: [] } };
+                            
                             resData.data.forEach(item => {
                                 const user = item.user;
                                 if (newDb[user]) {
                                     newDb[user].history.push(item);
-                                    // 🌟 回歸乾淨邏輯：直接讀取正確的試算表 action 欄位
+                                    
+                                    // 精準依據對齊後的 F 欄 action 判斷增減點
                                     if (item.action === '讀書加點') {
                                         newDb[user].points += 1;
                                     } else if (item.action === '扣點') {
-                                        const match = item.publisher && item.publisher.match(/消耗 (\d+) 點/);
+                                        const match = item.buyBook && item.buyBook.match(/消耗 (\d+) 點/);
                                         const cost = match ? parseInt(match[1]) : 2;
                                         newDb[user].points -= cost;
                                     }
@@ -223,7 +226,6 @@
                 },
                 changeRedeemCount(delta) {
                     const newCount = this.redeemCount + delta;
-                    // 🌟 核心修復：解除點數卡死的門檻，允許自由增加本數長出格子！
                     if (newCount >= 1 && newCount <= 10) {
                         this.redeemCount = newCount;
                         if (this.redeemBooks.length < newCount) {
