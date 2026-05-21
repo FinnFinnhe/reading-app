@@ -10,91 +10,90 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
-            background-color: #ebe8e0; /* 底色 */
-            background-image: url('base.png'); /* 底圖 */
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+            background-color: #ebe8e0; 
+            background-image: url('base.png'); /* 若妳是 base.jpg 請自行修正 */
+            background-size: 100% auto;
+            background-repeat: no-repeat;
+            background-position: top center;
+            background-attachment: scroll;
         }
         .glass-card {
             background-color: rgba(255, 255, 255, 0.9) !important;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
+        /* 隱藏捲軸但保留功能 */
+        body::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="min-h-screen text-stone-800 p-4">
 
-    <div id="app" class="max-w-md mx-auto flex flex-col pb-8">
+    <div id="app" class="max-w-md mx-auto flex flex-col pt-80 pb-12">
         
-        <!-- 身分切換標籤 -->
-        <header class="mb-6">
-            <div class="flex justify-between items-center bg-white/50 p-1.5 rounded-2xl shadow-sm border border-stone-200/50 backdrop-blur">
+        <header class="mb-4">
+            <div class="flex justify-between items-center bg-white/40 p-1 rounded-xl border border-stone-200/40 backdrop-blur-sm">
                 <button @click="currentUser = 'S'" 
                         :class="currentUser === 'S' ? 'bg-slate-500 text-white font-black' : 'text-stone-400'"
-                        class="flex-1 py-2.5 rounded-xl transition-all text-center text-sm">S</button>
+                        class="flex-1 py-2 rounded-lg transition-all text-center text-xs">S</button>
                 <button @click="currentUser = 'F'" 
                         :class="currentUser === 'F' ? 'bg-[#5c4033] text-white font-black' : 'text-stone-400'"
-                        class="flex-1 py-2.5 rounded-xl transition-all text-center text-sm">F</button>
+                        class="flex-1 py-2 rounded-lg transition-all text-center text-xs">F</button>
             </div>
         </header>
 
-        <!-- 點數看板：增加 mt-24 確保不擋到底圖文字 -->
-        <main class="flex-1 mt-24">
-            <div class="glass-card rounded-[2.5rem] shadow-xl border border-white/20 p-8 mb-6 text-center relative">
-                <p class="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">可購書總額度</p>
-                <div class="text-7xl font-black mb-4" :class="currentUser === 'S' ? 'text-slate-500' : 'text-[#5c4033]'">
+        <main class="flex-1">
+            <div class="glass-card rounded-[1.5rem] shadow-xl border border-white/40 p-5 mb-3 text-center relative">
+                <p class="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">可購書總額度</p>
+                <div class="text-5xl font-black mb-1" :class="currentUser === 'S' ? 'text-slate-500' : 'text-[#5c4033]'">
                     {{ Math.floor(currentData.points / 2) }}
                 </div>
-                <!-- 集章進度 -->
-                <div class="flex justify-center gap-4 mt-6">
+                
+                <div class="flex justify-center gap-2.5 my-3">
                     <div v-for="i in [1, 2]" :key="i"
-                         class="w-16 h-16 rounded-2xl border-4 border-dashed flex items-center justify-center text-3xl transition-all"
+                         class="w-12 h-12 rounded-lg border-2 border-dashed flex items-center justify-center text-xl transition-all"
                          :class="(currentData.points % 2) >= i 
-                                 ? (currentUser === 'S' ? 'border-slate-200 bg-slate-50' : 'border-[#d7ccc8] bg-[#efebe9]') 
-                                 : 'border-stone-200 opacity-20'">
+                                 ? (currentUser === 'S' ? 'border-slate-300 bg-slate-100/50' : 'border-[#d7ccc8] bg-[#efebe9]/50') 
+                                 : 'border-stone-300/60 opacity-30'">
                         {{ (currentData.points % 2) >= i ? '💮' : '📖' }}
                     </div>
                 </div>
-                <p class="text-[10px] text-stone-400 mt-4 uppercase tracking-widest">累積總點數：{{ currentData.points }}</p>
+                <p class="text-[9px] text-stone-400 uppercase tracking-widest">累積點數：{{ currentData.points }}</p>
             </div>
 
-            <!-- 操作按鈕 -->
-            <div class="space-y-3">
+            <div class="space-y-2">
                 <button @click="showForm = true" :disabled="loading"
-                        class="w-full text-white font-bold py-5 rounded-2xl shadow-lg active:scale-95 disabled:bg-stone-300 transition-all"
+                        class="w-full text-white font-bold py-3.5 rounded-xl shadow-md active:scale-95 disabled:bg-stone-300 transition-all text-sm"
                         :class="currentUser === 'S' ? 'bg-slate-600' : 'bg-[#4e342e]'">
                     <span v-if="!loading">＋ {{ currentUser }} 讀完新書了</span>
                     <span v-else class="animate-pulse">同步雲端中...</span>
                 </button>
 
                 <button @click="openRedeemModal" :disabled="currentData.points < 2 || loading"
-                        class="w-full bg-white/60 text-stone-500 border-2 border-stone-200/50 font-bold py-4 rounded-2xl disabled:opacity-30 transition-all backdrop-blur-sm">
+                        class="w-full bg-white/70 text-stone-600 border border-stone-200/50 font-bold py-2.5 rounded-xl disabled:opacity-30 transition-all text-[10px] tracking-wider backdrop-blur-sm">
                     🛒 兌換購書額度 (每 2 點/本)
                 </button>
             </div>
 
-            <!-- 最近紀錄 -->
-            <div class="mt-10">
-                <h3 class="text-[10px] font-black text-stone-400 mb-4 tracking-widest uppercase text-center italic">Recent History</h3>
-                <div class="space-y-2 text-sm">
-                    <div v-for="(item, index) in [...currentData.history].reverse().slice(0, 3)" :key="index" 
-                         class="bg-white/80 p-4 rounded-xl shadow-sm border-l-4"
+            <div class="mt-6">
+                <h3 class="text-[9px] font-black text-stone-400 mb-2 tracking-widest uppercase text-center italic">Recent History</h3>
+                <div class="space-y-1.5 text-[11px]">
+                    <div v-for="(item, index) in [...currentData.history].reverse().slice(0, 2)" :key="index" 
+                         class="bg-white/80 p-2.5 rounded-lg shadow-sm border-l-4"
                          :class="currentUser === 'S' ? 'border-slate-500' : 'border-[#5c4033]'">
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="font-bold text-stone-700">{{ item.title }}</div>
-                                <div class="text-[10px] text-stone-400 mt-1">
-                                    <span>{{ item.publisher ? '出版社：' + item.publisher : '兌換購書' }}</span>
+                                <div class="font-bold text-stone-700 leading-tight">{{ item.title }}</div>
+                                <div class="text-[9px] text-stone-400 mt-0.5">
+                                    <span>{{ item.publisher ? item.publisher : '兌換紀錄' }}</span>
                                 </div>
                             </div>
-                            <span class="text-[10px] font-bold px-2 py-1 bg-white/50 rounded text-stone-500">{{ item.action }}</span>
+                            <span class="text-[8px] font-bold px-1.5 py-0.5 bg-white/60 rounded text-stone-500">{{ item.action }}</span>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
 
-        <!-- 書籍建檔彈窗 -->
         <div v-if="showForm" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
             <div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl">
                 <h3 class="text-lg font-black mb-6 uppercase tracking-tight">{{ currentUser }} 書籍建檔</h3>
@@ -112,17 +111,14 @@
             </div>
         </div>
 
-        <!-- 兌換數量選擇彈窗 -->
         <div v-if="showRedeemModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
             <div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl text-center">
                 <h3 class="text-lg font-black mb-2 uppercase tracking-tight">兌換購書額度</h3>
-                <p class="text-xs text-stone-400 mb-6">目前點數可換 {{ Math.floor(currentData.points / 2) }} 本書</p>
                 <div class="flex items-center justify-center gap-6 mb-8">
                     <button @click="redeemCount > 1 ? redeemCount-- : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">-</button>
                     <span class="text-4xl font-black">{{ redeemCount }}</span>
                     <button @click="redeemCount < Math.floor(currentData.points / 2) ? redeemCount++ : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">+</button>
                 </div>
-                <p class="text-sm font-bold mb-6 text-rose-500">將消耗 {{ redeemCount * 2 }} 點</p>
                 <div class="flex gap-3">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
                     <button @click="handleRedeem" 
@@ -177,7 +173,7 @@
                     if (this.currentData.points < totalCost) return alert('點數不足');
                     this.showRedeemModal = false;
                     const data = { 
-                        title: `兌換購書額度 (${this.redeemCount}本)`, 
+                        title: `兌換額度 (${this.redeemCount}本)`, 
                         action: '扣點', 
                         user: this.currentUser, 
                         date: new Date().toLocaleDateString('zh-TW'),
@@ -191,8 +187,6 @@
             },
             mounted() {
                 const saved = localStorage.getItem('sf_reading_project_final') || 
-                              localStorage.getItem('sf_reading_project_v5') || 
-                              localStorage.getItem('sf_reading_project_v4') || 
                               localStorage.getItem('sf_reading_v2');
                 if (saved) this.db = JSON.parse(saved);
             }
