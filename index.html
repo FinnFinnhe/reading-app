@@ -10,9 +10,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
-            background-color: #ebe8e0; 
-            background-image: url('base2.png'); /* 若妳是 base.jpg 請自行修正 */
-            background-size: 100% auto;
+            background-color: #ebe8e0; /* 妳指定的純色底色 */
+            background-image: url('base3.png'); /* 妳的 Banner 圖檔，若是 jpg 請改為 base.jpg */
+            background-size: 100% auto; /* 寬度填滿 */
             background-repeat: no-repeat;
             background-position: top center;
             background-attachment: scroll;
@@ -27,7 +27,7 @@
 </head>
 <body class="min-h-screen text-stone-800 p-4">
 
-    <div id="app" class="max-w-md mx-auto flex flex-col pt-48 pb-12">
+    <div id="app" class="max-w-md mx-auto flex flex-col pt-[220px] pb-12">
         
         <header class="mb-4">
             <div class="flex justify-between items-center bg-white/40 p-1 rounded-xl border border-stone-200/40 backdrop-blur-sm">
@@ -149,7 +149,7 @@
                     showForm: false,
                     showRedeemModal: false,
                     redeemCount: 1,
-                    redeemBookTitle: '', // 記錄兌換時輸入的書名
+                    redeemBookTitle: '',
                     form: { title: '', author: '', publisher: '' },
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
@@ -175,7 +175,7 @@
                 },
                 openRedeemModal() {
                     this.redeemCount = 1;
-                    this.redeemBookTitle = ''; // 每次打開時清空
+                    this.redeemBookTitle = '';
                     this.showRedeemModal = true;
                 },
                 async handleRedeem() {
@@ -183,8 +183,6 @@
                     if (this.currentData.points < totalCost) return alert('點數不足');
                     
                     this.showRedeemModal = false;
-                    
-                    // 彙整書名資訊
                     const bookNote = this.redeemBookTitle.trim() ? ` 📘 預計購買：${this.redeemBookTitle.trim()}` : '';
                     
                     const data = { 
