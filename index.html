@@ -3,36 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>S&F 讀書集點計畫</title>
+    <title>拯救書庫 Project</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-color: #ebe8e0; /* 妳指定的底色 */
+            background-image: url('base.png'); /* 妳指定的底圖檔名 */
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        /* 讓中間的框帶有輕微透明度，透出底圖質感 */
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.9) !important;
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
-<body class="bg-stone-50 min-h-screen text-stone-800 p-4">
+<body class="min-h-screen text-stone-800 p-4">
 
     <div id="app" class="max-w-md mx-auto flex flex-col pb-8">
         
-        <!-- 身分切換標籤 -->
+        <!-- 身分切換標籤 (已移除圖標) -->
         <header class="mb-6">
-            <div class="flex justify-between items-center bg-white p-1.5 rounded-2xl shadow-sm border border-stone-200">
+            <div class="flex justify-between items-center bg-white/50 p-1.5 rounded-2xl shadow-sm border border-stone-200/50 backdrop-blur">
                 <button @click="currentUser = 'S'" 
-                        :class="currentUser === 'S' ? 'bg-indigo-500 text-white font-black' : 'text-stone-400'"
+                        :class="currentUser === 'S' ? 'bg-slate-500 text-white font-black' : 'text-stone-400'"
                         class="flex-1 py-2.5 rounded-xl transition-all text-center text-sm">S</button>
                 <button @click="currentUser = 'F'" 
-                        :class="currentUser === 'F' ? 'bg-rose-400 text-white font-black' : 'text-stone-400'"
+                        :class="currentUser === 'F' ? 'bg-[#5c4033] text-white font-black' : 'text-stone-400'"
                         class="flex-1 py-2.5 rounded-xl transition-all text-center text-sm">F</button>
             </div>
-            <h1 class="text-2xl font-black text-center text-stone-700 mt-6 tracking-tight">拯救書庫Project</h1>
+            <h1 class="text-2xl font-black text-center text-stone-700 mt-6 tracking-tight">📚 拯救書庫 Project</h1>
         </header>
 
         <!-- 點數看板 -->
         <main class="flex-1">
-            <div class="bg-white rounded-[2.5rem] shadow-xl border border-stone-100 p-8 mb-6 text-center">
-                <p class="text-[10px] font-black text-stone-300 uppercase tracking-widest mb-2">可購書額度 (本)</p>
-                <div class="text-7xl font-black mb-4" :class="currentUser === 'S' ? 'text-indigo-500' : 'text-rose-400'">
+            <div class="glass-card rounded-[2.5rem] shadow-xl border border-white/20 p-8 mb-6 text-center relative">
+                <p class="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">可購書總額度</p>
+                <div class="text-7xl font-black mb-4" :class="currentUser === 'S' ? 'text-slate-500' : 'text-[#5c4033]'">
                     {{ Math.floor(currentData.points / 2) }}
                 </div>
                 <!-- 集章進度 -->
@@ -40,25 +52,26 @@
                     <div v-for="i in [1, 2]" :key="i"
                          class="w-16 h-16 rounded-2xl border-4 border-dashed flex items-center justify-center text-3xl transition-all"
                          :class="(currentData.points % 2) >= i 
-                                 ? (currentUser === 'S' ? 'border-indigo-100 bg-indigo-50' : 'border-rose-100 bg-rose-50') 
-                                 : 'border-stone-100 opacity-20'">
+                                 ? (currentUser === 'S' ? 'border-slate-200 bg-slate-50' : 'border-[#d7ccc8] bg-[#efebe9]') 
+                                 : 'border-stone-200 opacity-20'">
                         {{ (currentData.points % 2) >= i ? '💮' : '📖' }}
                     </div>
                 </div>
+                <p class="text-[10px] text-stone-400 mt-4 uppercase tracking-widest">累積總點數：{{ currentData.points }}</p>
             </div>
 
             <!-- 操作按鈕 -->
             <div class="space-y-3">
                 <button @click="showForm = true" :disabled="loading"
                         class="w-full text-white font-bold py-5 rounded-2xl shadow-lg active:scale-95 disabled:bg-stone-300 transition-all"
-                        :class="currentUser === 'S' ? 'bg-indigo-600' : 'bg-rose-400'">
-                    <span v-if="!loading">➕ {{ currentUser }} 讀完新書了</span>
-                    <span v-else class="animate-pulse">同步至試算表中...</span>
+                        :class="currentUser === 'S' ? 'bg-slate-600' : 'bg-[#4e342e]'">
+                    <span v-if="!loading">＋ {{ currentUser }} 讀完新書了</span>
+                    <span v-else class="animate-pulse">同步雲端中...</span>
                 </button>
 
-                <button @click="handleRedeem" :disabled="currentData.points < 2 || loading"
-                        class="w-full bg-white text-stone-400 border-2 border-stone-100 font-bold py-4 rounded-2xl disabled:opacity-30 transition-all">
-                    🛒 兌換購書額度 (-2 點)
+                <button @click="openRedeemModal" :disabled="currentData.points < 2 || loading"
+                        class="w-full bg-white/60 text-stone-500 border-2 border-stone-200/50 font-bold py-4 rounded-2xl disabled:opacity-30 transition-all backdrop-blur-sm">
+                    🛒 兌換購書額度 (每 2 點/本)
                 </button>
             </div>
 
@@ -67,47 +80,56 @@
                 <h3 class="text-[10px] font-black text-stone-400 mb-4 tracking-widest uppercase text-center italic">Recent History</h3>
                 <div class="space-y-2 text-sm">
                     <div v-for="(item, index) in [...currentData.history].reverse().slice(0, 3)" :key="index" 
-                         class="bg-white p-4 rounded-xl shadow-sm border-l-4"
-                         :class="currentUser === 'S' ? 'border-indigo-500' : 'border-rose-400'">
+                         class="bg-white/80 p-4 rounded-xl shadow-sm border-l-4"
+                         :class="currentUser === 'S' ? 'border-slate-500' : 'border-[#5c4033]'">
                         <div class="flex justify-between items-start">
                             <div>
                                 <div class="font-bold text-stone-700">{{ item.title }}</div>
                                 <div class="text-[10px] text-stone-400 mt-1">
-                                    <span v-if="item.publisher">出版社：{{ item.publisher }}</span>
-                                    <span v-else-if="item.action === '扣點'">兌換購書</span>
-                                    <span v-else>未填寫出版社</span>
+                                    <span>{{ item.publisher ? '出版社：' + item.publisher : '兌換購書' }}</span>
                                 </div>
                             </div>
-                            <span class="text-[10px] font-bold px-2 py-1 bg-stone-50 rounded text-stone-500">{{ item.action }}</span>
+                            <span class="text-[10px] font-bold px-2 py-1 bg-white/50 rounded text-stone-500">{{ item.action }}</span>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
 
-        <!-- 表單彈窗 -->
+        <!-- 書籍建檔彈窗 -->
         <div v-if="showForm" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
             <div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl">
                 <h3 class="text-lg font-black mb-6 uppercase tracking-tight">{{ currentUser }} 書籍建檔</h3>
                 <div class="space-y-4">
-                    <div>
-                        <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1 mb-1 block">書名 *</label>
-                        <input v-model="form.title" placeholder="看了哪本書？" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-stone-200">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1 mb-1 block">作者</label>
-                        <input v-model="form.author" placeholder="作者姓名" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-stone-200">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1 mb-1 block">出版社</label>
-                        <input v-model="form.publisher" placeholder="哪間出版社？" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-stone-200">
-                    </div>
+                    <input v-model="form.title" placeholder="書名 *" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none">
+                    <input v-model="form.author" placeholder="作者" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none">
+                    <input v-model="form.publisher" placeholder="出版社" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none">
                     <div class="flex gap-3 pt-4">
                         <button @click="showForm = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
                         <button @click="submitBook" 
-                                :class="currentUser === 'S' ? 'bg-indigo-500' : 'bg-rose-400'"
+                                :class="currentUser === 'S' ? 'bg-slate-500' : 'bg-[#5c4033]'"
                                 class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg">確認送出</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 兌換數量選擇彈窗 -->
+        <div v-if="showRedeemModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+            <div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl text-center">
+                <h3 class="text-lg font-black mb-2 uppercase tracking-tight">兌換購書額度</h3>
+                <p class="text-xs text-stone-400 mb-6">目前點數可換 {{ Math.floor(currentData.points / 2) }} 本書</p>
+                <div class="flex items-center justify-center gap-6 mb-8">
+                    <button @click="redeemCount > 1 ? redeemCount-- : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">-</button>
+                    <span class="text-4xl font-black">{{ redeemCount }}</span>
+                    <button @click="redeemCount < Math.floor(currentData.points / 2) ? redeemCount++ : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">+</button>
+                </div>
+                <p class="text-sm font-bold mb-6 text-rose-500">將消耗 {{ redeemCount * 2 }} 點</p>
+                <div class="flex gap-3">
+                    <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
+                    <button @click="handleRedeem" 
+                            :class="currentUser === 'S' ? 'bg-slate-500' : 'bg-[#5c4033]'"
+                            class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg">確認兌換</button>
                 </div>
             </div>
         </div>
@@ -115,16 +137,17 @@
 
     <script>
         const { createApp } = Vue;
-        // 已更新為妳提供的最新網址
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwhK6C80FggOvsiN9laA96n4jb1A8m0mbRWywZU0urIiR7oKL4NGUwRsW73ciG64E49/exec';
 
         createApp({
             data() {
                 return {
-                    currentUser: 'F', // 預設身分為 F
+                    currentUser: 'F',
                     loading: false,
                     showForm: false,
-                    form: { title: '', author: '', publisher: '' }, // 心得已替換為出版社
+                    showRedeemModal: false,
+                    redeemCount: 1,
+                    form: { title: '', author: '', publisher: '' },
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
             },
@@ -133,44 +156,45 @@
                 async syncToCloud(payload) {
                     this.loading = true;
                     try {
-                        // 使用 no-cors 模式確保能成功發送至 Google Script[cite: 1]
                         await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
                         return true;
-                    } catch (e) { 
-                        console.error('傳送失敗', e);
-                        return false; 
-                    } finally { this.loading = false; }
+                    } catch (e) { return false; } finally { this.loading = false; }
                 },
                 async submitBook() {
                     if (!this.form.title.trim()) return alert('請輸入書名');
-                    const data = { 
-                        ...this.form, 
-                        action: '讀書加點', 
-                        user: this.currentUser, 
-                        date: new Date().toLocaleDateString('zh-TW') 
-                    };
-                    
-                    await this.syncToCloud(data); // 同步出版社資料[cite: 1]
-                    
+                    const data = { ...this.form, action: '讀書加點', user: this.currentUser, date: new Date().toLocaleDateString('zh-TW') };
+                    await this.syncToCloud(data);
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
-                    localStorage.setItem('sf_reading_v2', JSON.stringify(this.db));
+                    localStorage.setItem('sf_reading_project_v5', JSON.stringify(this.db));
                     this.form = { title: '', author: '', publisher: '' };
                     this.showForm = false;
                 },
+                openRedeemModal() {
+                    this.redeemCount = 1;
+                    this.showRedeemModal = true;
+                },
                 async handleRedeem() {
-                    if (!confirm('消耗 2 點換購新書嗎？')) return;
-                    const data = { title: '兌換購書額度', action: '扣點', user: this.currentUser, date: new Date().toLocaleDateString('zh-TW') };
-                    
+                    const totalCost = this.redeemCount * 2;
+                    if (this.currentData.points < totalCost) return alert('點數不足');
+                    this.showRedeemModal = false;
+                    const data = { 
+                        title: `兌換購書額度 (${this.redeemCount}本)`, 
+                        action: '扣點', 
+                        user: this.currentUser, 
+                        date: new Date().toLocaleDateString('zh-TW'),
+                        publisher: `消耗 ${totalCost} 點`
+                    };
                     await this.syncToCloud(data);
-                    
-                    this.currentData.points -= 2;
+                    this.currentData.points -= totalCost;
                     this.currentData.history.push(data);
-                    localStorage.setItem('sf_reading_v2', JSON.stringify(this.db));
+                    localStorage.setItem('sf_reading_project_v5', JSON.stringify(this.db));
                 }
             },
             mounted() {
-                const saved = localStorage.getItem('sf_reading_v2');
+                const saved = localStorage.getItem('sf_reading_project_v5') || 
+                              localStorage.getItem('sf_reading_project_v4') || 
+                              localStorage.getItem('sf_reading_v2');
                 if (saved) this.db = JSON.parse(saved);
             }
         }).mount('#app')
