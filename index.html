@@ -73,7 +73,7 @@
             <div class="mt-5">
                 <h3 class="text-[9px] font-black text-stone-400 mb-2 tracking-widest uppercase text-center italic">Recent History</h3>
                 <div class="space-y-1.5 text-[10px]">
-                    <div v-for="(item, index) in [...currentData.history].reverse().slice(0, 2)" :key="index" 
+                    <div v-for="(item, index) in [...currentData.history].reverse().slice(0, 4)" :key="index" 
                          class="bg-white/80 p-2 rounded-lg shadow-sm border-l-4"
                          :class="currentUser === 'S' ? 'border-slate-500' : 'border-[#5c4033]'">
                         <div class="flex justify-between items-start">
@@ -81,7 +81,7 @@
                                 <div class="font-bold text-stone-700 leading-tight">{{ item.title }}</div>
                                 <div class="text-[9px] text-stone-400 mt-0.5">
                                     <span v-if="item.action === '讀書加點'">{{ item.author ? item.author : '無作者' }} / {{ item.publisher ? item.publisher : '無出版社' }}</span>
-                                    <span v-else>{{ item.buyBook || '兌換紀錄' }}</span>
+                                    <span v-else class="text-amber-700 font-medium">{{ item.buyBook }}</span>
                                 </div>
                             </div>
                             <span class="text-[8px] font-bold px-1.5 py-0.5 bg-white/60 rounded text-stone-500">{{ item.action }}</span>
@@ -122,7 +122,7 @@
                 <div class="flex-1 overflow-y-auto my-2 pr-1 space-y-2 text-left max-h-[30vh]">
                     <div v-for="i in redeemCount" :key="i">
                         <label class="text-[10px] font-bold text-stone-400 block mb-0.5 ml-1">第 {{ i }} 本預計購買書名 (選填)</label>
-                        <input v-model="redeemBooks[i - 1]" :placeholder="'書名 ' + i" class="w-full bg-stone-50 px-4 py-2.5 rounded-xl text-xs outline-none border border-stone-100 focus:border-stone-200">
+                        <input v-model="redeemBooks[i - 1]" :placeholder="'預計購買書名 ' + i" class="w-full bg-stone-50 px-4 py-2.5 rounded-xl text-xs outline-none border border-stone-100 focus:border-stone-200">
                     </div>
                 </div>
 
@@ -142,7 +142,7 @@
 
     <script>
         const { createApp } = Vue;
-        // 🌟 這裡已換上最新的新部署網址
+        // 🌟 已經對齊妳最新部署的網址囉！
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwhK6C80FggOvsiN9laA96n4jb1A8m0mbRWywZU0urIiR7oKL4NGUwRsW73ciG64E49/exec';
 
         createApp({
@@ -164,8 +164,7 @@
                     if (!this.currentData || !this.currentData.history) return 0;
                     const currentYear = new Date().getFullYear().toString();
                     return this.currentData.history.filter(item => {
-                        const hasYear = item.date && item.date.includes(currentYear);
-                        return hasYear && item.action === '讀書加點';
+                        return item.date && item.date.includes(currentYear) && item.action === '讀書加點';
                     }).length;
                 }
             },
@@ -183,13 +182,11 @@
                                 if (newDb[user]) {
                                     newDb[user].history.push(item);
                                     
-                                    // 精準依據對齊後的 F 欄 action 判斷增減點
                                     if (item.action === '讀書加點') {
                                         newDb[user].points += 1;
                                     } else if (item.action === '扣點') {
-                                        const match = item.buyBook && item.buyBook.match(/消耗 (\d+) 點/);
-                                        const cost = match ? parseInt(match[1]) : 2;
-                                        newDb[user].points -= cost;
+                                        // 每列紀錄精準扣除 2 點
+                                        newDb[user].points -= 2;
                                     }
                                 }
                             });
@@ -213,9 +210,12 @@
                     if (!this.form.title.trim()) return alert('請輸入書名');
                     const data = { ...this.form, action: '讀書加點', user: this.currentUser, date: new Date().toLocaleDateString('zh-TW') };
                     this.showForm = false;
+                    
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
                     this.form = { title: '', author: '', publisher: '' };
+                    localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
+                    
                     await this.syncToCloud(data);
                     await this.fetchFromCloud();
                 },
@@ -240,21 +240,35 @@
                     if (this.currentData.points < totalCost) return alert('點數不足');
                     
                     this.showRedeemModal = false;
-                    const validBooks = this.redeemBooks.map(b => b.trim()).filter(b => b !== '');
-                    const bookNote = validBooks.length > 0 ? ` 📘 預計購買：${validBooks.join('、')}` : '';
+                    const dateStr = new Date().toLocaleDateString('zh-TW');
                     
-                    const data = { 
-                        title: `兌換額度 (${this.redeemCount}本)${bookNote}`, 
-                        action: '扣點', 
-                        user: this.currentUser, 
-                        date: new Date().toLocaleDateString('zh-TW'),
-                        publisher: `消耗 ${totalCost} 點`
-                    };
+                    // 💡 將一次兌換拆分成多個獨立的單本物件陣列
+                    const packOfRecords = [];
+                    for (let i = 0; i < this.redeemCount; i++) {
+                        const bookName = this.redeemBooks[i] && this.redeemBooks[i].trim() ? this.redeemBooks[i].trim() : "未填寫書名";
+                        
+                        const singleRecord = {
+                            title: `兌換額度 (第${i+1}本)`,
+                            action: '扣點',
+                            user: this.currentUser,
+                            date: dateStr,
+                            buyBook: `${bookName} (消耗 2 點)` // 完美對齊 G 欄（買書）
+                        };
+                        
+                        packOfRecords.push(singleRecord);
+                        this.currentData.history.push(singleRecord);
+                    }
                     
+                    // 本地立即扣除點數並存檔
                     this.currentData.points -= totalCost;
-                    this.currentData.history.push(data);
-                    await this.syncToCloud(data);
-                    await this.fetchFromCloud();
+                    localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
+                    
+                    // 送出陣列給 GAS 進行拆列寫入
+                    await this.syncToCloud(packOfRecords);
+                    
+                    setTimeout(async () => {
+                        await this.fetchFromCloud();
+                    }, 1500);
                 }
             },
             mounted() {
