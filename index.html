@@ -22,13 +22,12 @@
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
         }
-        /* 隱藏捲軸但保留功能 */
         body::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="min-h-screen text-stone-800 p-4">
 
-    <div id="app" class="max-w-md mx-auto flex flex-col pt-80 pb-12">
+    <div id="app" class="max-w-md mx-auto flex flex-col pt-48 pb-12">
         
         <header class="mb-4">
             <div class="flex justify-between items-center bg-white/40 p-1 rounded-xl border border-stone-200/40 backdrop-blur-sm">
@@ -114,11 +113,20 @@
         <div v-if="showRedeemModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
             <div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl text-center">
                 <h3 class="text-lg font-black mb-2 uppercase tracking-tight">兌換購書額度</h3>
-                <div class="flex items-center justify-center gap-6 mb-8">
+                <p class="text-xs text-stone-400 mb-4">目前點數可換 {{ Math.floor(currentData.points / 2) }} 本書</p>
+                
+                <div class="flex items-center justify-center gap-6 mb-4">
                     <button @click="redeemCount > 1 ? redeemCount-- : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">-</button>
                     <span class="text-4xl font-black">{{ redeemCount }}</span>
                     <button @click="redeemCount < Math.floor(currentData.points / 2) ? redeemCount++ : null" class="w-12 h-12 rounded-full border-2 border-stone-100 text-2xl font-bold">+</button>
                 </div>
+                
+                <div class="mb-4">
+                    <input v-model="redeemBookTitle" placeholder="打算買什麼書呢？(選填)" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-xs outline-none text-center border border-stone-100">
+                </div>
+
+                <p class="text-xs font-bold mb-5 text-rose-500">將消耗 {{ redeemCount * 2 }} 點</p>
+                
                 <div class="flex gap-3">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
                     <button @click="handleRedeem" 
@@ -141,6 +149,7 @@
                     showForm: false,
                     showRedeemModal: false,
                     redeemCount: 1,
+                    redeemBookTitle: '', // 記錄兌換時輸入的書名
                     form: { title: '', author: '', publisher: '' },
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
@@ -166,19 +175,26 @@
                 },
                 openRedeemModal() {
                     this.redeemCount = 1;
+                    this.redeemBookTitle = ''; // 每次打開時清空
                     this.showRedeemModal = true;
                 },
                 async handleRedeem() {
                     const totalCost = this.redeemCount * 2;
                     if (this.currentData.points < totalCost) return alert('點數不足');
+                    
                     this.showRedeemModal = false;
+                    
+                    // 彙整書名資訊
+                    const bookNote = this.redeemBookTitle.trim() ? ` 📘 預計購買：${this.redeemBookTitle.trim()}` : '';
+                    
                     const data = { 
-                        title: `兌換額度 (${this.redeemCount}本)`, 
+                        title: `兌換額度 (${this.redeemCount}本)${bookNote}`, 
                         action: '扣點', 
                         user: this.currentUser, 
                         date: new Date().toLocaleDateString('zh-TW'),
                         publisher: `消耗 ${totalCost} 點`
                     };
+                    
                     await this.syncToCloud(data);
                     this.currentData.points -= totalCost;
                     this.currentData.history.push(data);
