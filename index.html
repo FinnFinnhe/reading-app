@@ -125,13 +125,14 @@
                     </div>
                 </div>
 
-                <p class="text-xs font-bold my-3 text-rose-500">將消耗 {{ redeemCount * 2 }} 點</p>
+                <p v-if="currentData.points < (redeemCount * 2)" class="text-[10px] font-bold mt-2 text-rose-500 animate-bounce">⚠️ 點數不足 (尚需 {{ (redeemCount * 2) - currentData.points }} 點)</p>
+                <p class="text-xs font-bold my-3 text-stone-500">將消耗 {{ redeemCount * 2 }} 點</p>
                 
                 <div class="flex gap-3 pt-2 border-t border-stone-50">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
-                    <button @click="handleRedeem" :disabled="loading"
+                    <button @click="handleRedeem" :disabled="loading || currentData.points < (redeemCount * 2)"
                             :class="currentUser === 'S' ? 'bg-slate-500' : 'bg-[#5c4033]'"
-                            class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg disabled:opacity-50">確認兌換</button>
+                            class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg disabled:opacity-30 disabled:grayscale">確認兌換</button>
                 </div>
             </div>
         </div>
@@ -150,7 +151,7 @@
                     showForm: false,
                     showRedeemModal: false,
                     redeemCount: 1,
-                    redeemBooks: [''], // 🌟 用陣列來裝多本書名
+                    redeemBooks: [''],
                     form: { title: '', author: '', publisher: '' },
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
@@ -162,8 +163,8 @@
                     const currentYear = new Date().getFullYear().toString();
                     return this.currentData.history.filter(item => {
                         const hasYear = item.date && item.date.includes(currentYear);
-                        const isAddPoint = item.action === '讀書加點';
-                        return hasYear && isAddPoint;
+                        // 🌟 回歸乾淨邏輯：精準比對 action 欄位
+                        return hasYear && item.action === '讀書加點';
                     }).length;
                 }
             },
@@ -175,15 +176,15 @@
                         const resData = await response.json();
                         if (resData.success && resData.data) {
                             const newDb = { S: { points: 0, history: [] }, F: { points: 0, history: [] } };
-                            
                             resData.data.forEach(item => {
                                 const user = item.user;
                                 if (newDb[user]) {
                                     newDb[user].history.push(item);
+                                    // 🌟 回歸乾淨邏輯：直接讀取正確的試算表 action 欄位
                                     if (item.action === '讀書加點') {
                                         newDb[user].points += 1;
                                     } else if (item.action === '扣點') {
-                                        const match = item.publisher.match(/消耗 (\d+) 點/);
+                                        const match = item.publisher && item.publisher.match(/消耗 (\d+) 點/);
                                         const cost = match ? parseInt(match[1]) : 2;
                                         newDb[user].points -= cost;
                                     }
@@ -193,7 +194,7 @@
                             localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
                         }
                     } catch (e) {
-                        console.error("雲端讀取失敗，使用本地暫存:", e);
+                        console.error("雲端讀取失敗:", e);
                     } finally {
                         this.loading = false;
                     }
@@ -208,28 +209,23 @@
                 async submitBook() {
                     if (!this.form.title.trim()) return alert('請輸入書名');
                     const data = { ...this.form, action: '讀書加點', user: this.currentUser, date: new Date().toLocaleDateString('zh-TW') };
-                    
                     this.showForm = false;
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
-                    
                     this.form = { title: '', author: '', publisher: '' };
-                    
                     await this.syncToCloud(data);
                     await this.fetchFromCloud();
                 },
                 openRedeemModal() {
                     this.redeemCount = 1;
-                    this.redeemBooks = ['']; // 重置為一個空輸入框
+                    this.redeemBooks = [''];
                     this.showRedeemModal = true;
                 },
-                // 🌟 控制數量加減，並動態調整輸入框陣列長度
                 changeRedeemCount(delta) {
-                    const maxCount = Math.floor(this.currentData.points / 2);
                     const newCount = this.redeemCount + delta;
-                    if (newCount >= 1 && newCount <= maxCount) {
+                    // 🌟 核心修復：解除點數卡死的門檻，允許自由增加本數長出格子！
+                    if (newCount >= 1 && newCount <= 10) {
                         this.redeemCount = newCount;
-                        // 如果數量變多，補齊陣列空位；如果變少，切斷多出的部分
                         if (this.redeemBooks.length < newCount) {
                             while (this.redeemBooks.length < newCount) this.redeemBooks.push('');
                         } else {
@@ -242,8 +238,6 @@
                     if (this.currentData.points < totalCost) return alert('點數不足');
                     
                     this.showRedeemModal = false;
-                    
-                    // 🌟 過濾並整理多本書名，用逗號串接起來
                     const validBooks = this.redeemBooks.map(b => b.trim()).filter(b => b !== '');
                     const bookNote = validBooks.length > 0 ? ` 📘 預計購買：${validBooks.join('、')}` : '';
                     
@@ -257,15 +251,13 @@
                     
                     this.currentData.points -= totalCost;
                     this.currentData.history.push(data);
-                    
                     await this.syncToCloud(data);
                     await this.fetchFromCloud();
                 }
             },
             mounted() {
-                const saved = localStorage.getItem('sf_reading_project_sync') || localStorage.getItem('sf_reading_project_final_force');
+                const saved = localStorage.getItem('sf_reading_project_sync');
                 if (saved) this.db = JSON.parse(saved);
-                
                 this.fetchFromCloud();
             }
         }).mount('#app')
