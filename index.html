@@ -66,7 +66,7 @@
 
                 <button @click="openRedeemModal" :disabled="currentData.points < 2 || loading"
                         class="w-full bg-white/70 text-stone-600 border border-stone-200 font-bold p-2.5 rounded-xl disabled:opacity-30 transition-all text-[9px] tracking-wider backdrop-blur-sm">
-                    🛒 兌換購書額度 (每 2 點/本)
+                    🛒 兌換購書額度 (消耗 2 點/本)
                 </button>
             </div>
 
@@ -109,29 +109,20 @@
         </div>
 
         <div v-if="showRedeemModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-            <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl text-center max-h-[85vh] flex flex-col">
+            <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl text-center flex flex-col">
                 <h3 class="text-lg font-black mb-1 uppercase tracking-tight">兌換購書額度</h3>
-                <p class="text-xs text-stone-400 mb-3">目前點數可換 {{ Math.floor(currentData.points / 2) }} 本書</p>
+                <p class="text-xs text-stone-400 mb-4">本次將兌換 1 本書，固定消耗 2 點</p>
                 
-                <div class="flex items-center justify-center gap-6 mb-3">
-                    <button @click="changeRedeemCount(-1)" class="w-10 h-10 rounded-full border-2 border-stone-100 text-xl font-bold flex items-center justify-center active:bg-stone-50">-</button>
-                    <span class="text-3xl font-black w-12">{{ redeemCount }}</span>
-                    <button @click="changeRedeemCount(1)" class="w-10 h-10 rounded-full border-2 border-stone-100 text-xl font-bold flex items-center justify-center active:bg-stone-50">+</button>
-                </div>
-                
-                <div class="flex-1 overflow-y-auto my-2 pr-1 space-y-2 text-left max-h-[30vh]">
-                    <div v-for="i in redeemCount" :key="i">
-                        <label class="text-[10px] font-bold text-stone-400 block mb-0.5 ml-1">第 {{ i }} 本預計購買書名 (選填)</label>
-                        <input v-model="redeemBooks[i - 1]" :placeholder="'預計購買書名 ' + i" class="w-full bg-stone-50 px-4 py-2.5 rounded-xl text-xs outline-none border border-stone-100 focus:border-stone-200">
-                    </div>
+                <div class="text-left mb-4">
+                    <label class="text-[10px] font-bold text-stone-400 block mb-1 ml-1">欲購買之書名 *</label>
+                    <input v-model="redeemBookName" placeholder="請輸入打算購買的書名" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none border border-stone-100 focus:border-stone-200">
                 </div>
 
-                <p v-if="currentData.points < (redeemCount * 2)" class="text-[10px] font-bold mt-2 text-rose-500 animate-bounce">⚠️ 點數不足 (尚需 {{ (redeemCount * 2) - currentData.points }} 點)</p>
-                <p class="text-xs font-bold my-3 text-stone-500">將消耗 {{ redeemCount * 2 }} 點</p>
+                <p class="text-xs font-bold my-2 text-stone-500">將消耗 2 點</p>
                 
-                <div class="flex gap-3 pt-2 border-t border-stone-50">
+                <div class="flex gap-3 pt-4 border-t border-stone-50">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
-                    <button @click="handleRedeem" :disabled="loading || currentData.points < (redeemCount * 2)"
+                    <button @click="handleRedeem" :disabled="loading || !redeemBookName.trim()"
                             :class="currentUser === 'S' ? 'bg-slate-500' : 'bg-[#5c4033]'"
                             class="flex-[2] text-white font-bold py-3 rounded-xl shadow-lg disabled:opacity-30 disabled:grayscale">確認兌換</button>
                 </div>
@@ -151,8 +142,7 @@
                     loading: false,
                     showForm: false,
                     showRedeemModal: false,
-                    redeemCount: 1,
-                    redeemBooks: [''],
+                    redeemBookName: '', // 單本欲購書名
                     form: { title: '', author: '', publisher: '' },
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
@@ -184,7 +174,7 @@
                                     if (item.action === '讀書加點') {
                                         newDb[user].points += 1;
                                     } else if (item.action === '扣點') {
-                                        newDb[user].points -= 2;
+                                        newDb[user].points -= 2; // 每一列固定正確扣回 2 點
                                     }
                                 }
                             });
@@ -218,51 +208,34 @@
                     await this.fetchFromCloud();
                 },
                 openRedeemModal() {
-                    this.redeemCount = 1;
-                    this.redeemBooks = [''];
+                    this.redeemBookName = '';
                     this.showRedeemModal = true;
                 },
-                changeRedeemCount(delta) {
-                    const newCount = this.redeemCount + delta;
-                    if (newCount >= 1 && newCount <= 10) {
-                        this.redeemCount = newCount;
-                        if (this.redeemBooks.length < newCount) {
-                            while (this.redeemBooks.length < newCount) this.redeemBooks.push('');
-                        } else {
-                            this.redeemBooks = this.redeemBooks.slice(0, newCount);
-                        }
-                    }
-                },
                 async handleRedeem() {
-                    const totalCost = this.redeemCount * 2;
-                    if (this.currentData.points < totalCost) return alert('點數不足');
+                    if (this.currentData.points < 2) return alert('點數不足');
+                    if (!this.redeemBookName.trim()) return alert('請填寫預計購買之書名');
                     
                     this.showRedeemModal = false;
                     const dateStr = new Date().toLocaleDateString('zh-TW');
                     
-                    // 🌟 修正後的欄位打包邏輯（配合後端 appendRow 的 A~G 欄順序）
-                    const packOfRecords = [];
-                    for (let i = 0; i < this.redeemCount; i++) {
-                        const bookName = this.redeemBooks[i] && this.redeemBooks[i].trim() ? this.redeemBooks[i].trim() : "未填寫書名";
-                        
-                        const singleRecord = {
-                            date: dateStr,                       // A 欄: 時間
-                            user: this.currentUser,              // B 欄: 身分
-                            title: `兌換額度 (第${i+1}本)`,       // C 欄: 書名
-                            author: "",                          // D 欄: 作者 (留空)
-                            publisher: "",                       // E 欄: 出版社 (留空)
-                            action: '扣點',                      // F 欄: 動作
-                            buyBook: `${bookName} (消耗 2 點)`   // G 欄: 買書 🌟 正確定位到這裡！
-                        };
-                        
-                        packOfRecords.push(singleRecord);
-                        this.currentData.history.push(singleRecord);
-                    }
+                    // 🌟 重新校準的完美 7 欄對齊資料包
+                    const singleRecord = {
+                        date: dateStr,                           // A 欄: 時間
+                        user: this.currentUser,                  // B 欄: 身分
+                        title: "兌換額度 (1本)",                 // C 欄: 書名
+                        author: "",                              // D 欄: 作者 (留空)
+                        publisher: "",                           // E 欄: 出版社 (留空)
+                        action: '扣點',                          // F 欄: 動作
+                        buyBook: `${this.redeemBookName.trim()} (消耗 2 點)` // G 欄: 買書 🌟 完美歸位！
+                    };
                     
-                    this.currentData.points -= totalCost;
+                    // 本地先行扣點與更新畫面
+                    this.currentData.points -= 2;
+                    this.currentData.history.push(singleRecord);
                     localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
                     
-                    await this.syncToCloud(packOfRecords);
+                    // 同步到雲端試算表
+                    await this.syncToCloud(singleRecord);
                     
                     setTimeout(async () => {
                         await this.fetchFromCloud();
