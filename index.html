@@ -10,13 +10,12 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
-            background-color: #ebe8e0; /* 妳指定的底色 */
-            background-image: url('base.png'); /* 妳指定的底圖檔名 */
+            background-color: #ebe8e0; /* 底色 */
+            background-image: url('base.png'); /* 底圖 */
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
         }
-        /* 讓中間的框帶有輕微透明度，透出底圖質感 */
         .glass-card {
             background-color: rgba(255, 255, 255, 0.9) !important;
             backdrop-filter: blur(4px);
@@ -27,7 +26,7 @@
 
     <div id="app" class="max-w-md mx-auto flex flex-col pb-8">
         
-        <!-- 身分切換標籤 (已移除圖標) -->
+        <!-- 身分切換標籤 -->
         <header class="mb-6">
             <div class="flex justify-between items-center bg-white/50 p-1.5 rounded-2xl shadow-sm border border-stone-200/50 backdrop-blur">
                 <button @click="currentUser = 'S'" 
@@ -37,11 +36,10 @@
                         :class="currentUser === 'F' ? 'bg-[#5c4033] text-white font-black' : 'text-stone-400'"
                         class="flex-1 py-2.5 rounded-xl transition-all text-center text-sm">F</button>
             </div>
-            <h1 class="text-2xl font-black text-center text-stone-700 mt-6 tracking-tight">📚 拯救書庫 Project</h1>
         </header>
 
-        <!-- 點數看板 -->
-        <main class="flex-1">
+        <!-- 點數看板：增加 mt-24 確保不擋到底圖文字 -->
+        <main class="flex-1 mt-24">
             <div class="glass-card rounded-[2.5rem] shadow-xl border border-white/20 p-8 mb-6 text-center relative">
                 <p class="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">可購書總額度</p>
                 <div class="text-7xl font-black mb-4" :class="currentUser === 'S' ? 'text-slate-500' : 'text-[#5c4033]'">
@@ -166,7 +164,7 @@
                     await this.syncToCloud(data);
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
-                    localStorage.setItem('sf_reading_project_v5', JSON.stringify(this.db));
+                    localStorage.setItem('sf_reading_project_final', JSON.stringify(this.db));
                     this.form = { title: '', author: '', publisher: '' };
                     this.showForm = false;
                 },
@@ -188,11 +186,12 @@
                     await this.syncToCloud(data);
                     this.currentData.points -= totalCost;
                     this.currentData.history.push(data);
-                    localStorage.setItem('sf_reading_project_v5', JSON.stringify(this.db));
+                    localStorage.setItem('sf_reading_project_final', JSON.stringify(this.db));
                 }
             },
             mounted() {
-                const saved = localStorage.getItem('sf_reading_project_v5') || 
+                const saved = localStorage.getItem('sf_reading_project_final') || 
+                              localStorage.getItem('sf_reading_project_v5') || 
                               localStorage.getItem('sf_reading_project_v4') || 
                               localStorage.getItem('sf_reading_v2');
                 if (saved) this.db = JSON.parse(saved);
