@@ -142,7 +142,6 @@
 
     <script>
         const { createApp } = Vue;
-        // 🌟 已經對齊妳最新部署的網址囉！
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwhK6C80FggOvsiN9laA96n4jb1A8m0mbRWywZU0urIiR7oKL4NGUwRsW73ciG64E49/exec';
 
         createApp({
@@ -185,7 +184,6 @@
                                     if (item.action === '讀書加點') {
                                         newDb[user].points += 1;
                                     } else if (item.action === '扣點') {
-                                        // 每列紀錄精準扣除 2 點
                                         newDb[user].points -= 2;
                                     }
                                 }
@@ -242,28 +240,28 @@
                     this.showRedeemModal = false;
                     const dateStr = new Date().toLocaleDateString('zh-TW');
                     
-                    // 💡 將一次兌換拆分成多個獨立的單本物件陣列
+                    // 🌟 修正後的欄位打包邏輯（配合後端 appendRow 的 A~G 欄順序）
                     const packOfRecords = [];
                     for (let i = 0; i < this.redeemCount; i++) {
                         const bookName = this.redeemBooks[i] && this.redeemBooks[i].trim() ? this.redeemBooks[i].trim() : "未填寫書名";
                         
                         const singleRecord = {
-                            title: `兌換額度 (第${i+1}本)`,
-                            action: '扣點',
-                            user: this.currentUser,
-                            date: dateStr,
-                            buyBook: `${bookName} (消耗 2 點)` // 完美對齊 G 欄（買書）
+                            date: dateStr,                       // A 欄: 時間
+                            user: this.currentUser,              // B 欄: 身分
+                            title: `兌換額度 (第${i+1}本)`,       // C 欄: 書名
+                            author: "",                          // D 欄: 作者 (留空)
+                            publisher: "",                       // E 欄: 出版社 (留空)
+                            action: '扣點',                      // F 欄: 動作
+                            buyBook: `${bookName} (消耗 2 點)`   // G 欄: 買書 🌟 正確定位到這裡！
                         };
                         
                         packOfRecords.push(singleRecord);
                         this.currentData.history.push(singleRecord);
                     }
                     
-                    // 本地立即扣除點數並存檔
                     this.currentData.points -= totalCost;
                     localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
                     
-                    // 送出陣列給 GAS 進行拆列寫入
                     await this.syncToCloud(packOfRecords);
                     
                     setTimeout(async () => {
