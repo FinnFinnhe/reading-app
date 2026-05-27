@@ -90,8 +90,8 @@
             <div class="glass-card rounded-[1rem] shadow-lg border border-white/40 p-4 mb-3">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-[10px] font-black text-stone-400 uppercase tracking-wider">🐾 {{ currentUser }} 的隨身集點卡</h3>
-                    <span class="text-[9px] font-bold text-stone-400 bg-white/50 px-1.5 py-0.5 rounded">
-                        本輪進度: {{ currentStampCount }}/6
+                    <span class="text-[9px] font-bold text-pink-500 bg-pink-50 border border-pink-100 px-2 py-0.5 rounded-lg shadow-sm">
+                        第 {{ currentCardPage }} 張卡
                     </span>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
@@ -200,7 +200,11 @@
                         return item.date && item.date.includes(currentYear) && item.action === '讀書加點';
                     }).length;
                 },
-                // 🐾 🌟 修改這裡：直接改用「當前累積點數」來決定要蓋幾格印章 🌟 🐾
+                currentCardPage() {
+                    const points = this.currentData ? this.currentData.points : 0;
+                    if (points === 0) return 1;
+                    return Math.floor((points - 1) / 6) + 1;
+                },
                 currentStampCount() {
                     const points = this.currentData ? this.currentData.points : 0;
                     if (points === 0) return 0;
