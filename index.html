@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>拯救書庫 Project</title>
-    <link rel="apple-touch-icon" href="icon.png">
+    <link class="apple-touch-icon" href="icon.png">
     <link rel="icon" type="image/png" href="icon.png">
     
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -89,8 +89,13 @@
 
             <div class="glass-card rounded-[1rem] shadow-lg border border-white/40 p-4 mb-3">
                 <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-[10px] font-black text-stone-400 uppercase tracking-wider">🐾 {{ currentUser }} 的隨身集點卡</h3>
-                    <span class="text-[9px] font-bold text-pink-500 bg-pink-50 border border-pink-100 px-2 py-0.5 rounded-lg shadow-sm">
+                    <h3 class="text-[10px] font-black text-stone-400 uppercase tracking-wider">
+                        🐾 {{ currentUser }} 的隨身集點卡 
+                        <span v-if="currentCardPage === 1" class="ml-1 text-stone-400/80 font-bold">(第 1 張)</span>
+                    </h3>
+                    
+                    <span v-if="currentCardPage > 1" 
+                          class="text-[9px] font-bold text-pink-500 bg-pink-50 border border-pink-100 px-2 py-0.5 rounded-lg shadow-sm animate-fade-in">
                         第 {{ currentCardPage }} 張卡
                     </span>
                 </div>
