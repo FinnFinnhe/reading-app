@@ -91,13 +91,8 @@
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-[10px] font-black text-stone-400 uppercase tracking-wider">
                         🐾 {{ currentUser }} 的隨身集點卡 
-                        <span v-if="currentCardPage === 1" class="ml-1 text-stone-400/80 font-bold">(第 1 張)</span>
+                        <span class="ml-1 text-stone-400/70 font-bold">(第 {{ currentCardPage }} 張)</span>
                     </h3>
-                    
-                    <span v-if="currentCardPage > 1" 
-                          class="text-[9px] font-bold text-pink-500 bg-pink-50 border border-pink-100 px-2 py-0.5 rounded-lg shadow-sm animate-fade-in">
-                        第 {{ currentCardPage }} 張卡
-                    </span>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
                     <div v-for="i in 6" :key="i" 
