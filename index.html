@@ -27,14 +27,38 @@
         }
         body::-webkit-scrollbar { display: none; }
         
-        /* 🐾 貓掌落下的微動畫 */
-        .paw-stamp {
-            animation: stampIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            color: #f8a5c2 !important; /* 🌟 統一指定為妳最愛的粉紅色 */
+        /* 🐾 🌟 貓掌核心 CSS 技術 🌟 🐾 */
+        .paw-base {
+            width: 48px; /* 🌟 這裡可以調整貓掌的大小 */
+            height: 48px;
+            /* 🌟 使用妳的灰色圖檔 */
+            -webkit-mask-image: url('paw_gray.png');
+            mask-image: url('paw_gray.png');
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+            /* 預設灰色 */
+            background-color: #ddd; 
         }
+
+        .paw-stamped {
+            /* 🌟 使用妳的粉紅色圖檔 */
+            -webkit-mask-image: url('paw_pink.png');
+            mask-image: url('paw_pink.png');
+            /* 已蓋章：粉紅櫻花色 */
+            background-color: #f8a5c2; 
+            /* 已蓋章：微傾斜，更有真實印章感 */
+            transform: rotate(-15deg);
+            /* 🌟 蓋章落下的療癒微動畫 */
+            animation: stampIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
         @keyframes stampIn {
-            0% { transform: scale(3); opacity: 0; }
-            100% { transform: scale(1); opacity: 0.9; }
+            0% { transform: scale(3) rotate(-15deg); opacity: 0; }
+            100% { transform: scale(1) rotate(-15deg); opacity: 1; }
         }
     </style>
 </head>
@@ -76,12 +100,11 @@
                         本輪進度: {{ currentStampCount }}/6
                     </span>
                 </div>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-3 gap-3">
                     <div v-for="i in 6" :key="i" 
-                         class="aspect-square bg-stone-100/60 border border-stone-200/40 rounded-xl flex items-center justify-center relative overflow-hidden shadow-inner">
-                        <span v-if="i <= currentStampCount" 
-                              class="text-3xl paw-stamp select-none">🐾</span>
-                        <span v-else class="text-[10px] font-bold text-stone-300/60 select-none">{{ i }}</span>
+                         class="aspect-square bg-stone-100/60 border border-stone-200/40 rounded-xl flex items-center justify-center relative overflow-hidden shadow-inner p-2">
+                        <div :class="['paw-base', i <= currentStampCount ? 'paw-stamped' : '']"></div>
+                        <span v-if="i > currentStampCount" class="absolute bottom-1 right-1.5 text-[10px] font-bold text-stone-300/60 select-none">{{ i }}</span>
                     </div>
                 </div>
             </div>
@@ -142,11 +165,14 @@
             <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl text-center flex flex-col">
                 <h3 class="text-lg font-black mb-1 uppercase tracking-tight">兌換購書額度</h3>
                 <p class="text-xs text-stone-400 mb-4">本次將兌換 1 本書，固定消耗 2 點</p>
+                
                 <div class="text-left mb-4">
                     <label class="text-[10px] font-bold text-stone-400 block mb-1 ml-1">欲購買之書名 *</label>
                     <input v-model="redeemBookName" placeholder="請輸入打算購買的書名" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none border border-stone-100 focus:border-stone-200">
                 </div>
+
                 <p class="text-xs font-bold my-2 text-stone-500">將消耗 2 點</p>
+                
                 <div class="flex gap-3 pt-4 border-t border-stone-50">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
                     <button @click="handleRedeem" :disabled="loading || !redeemBookName.trim()"
@@ -176,6 +202,7 @@
             },
             computed: { 
                 currentData() { return this.db[this.currentUser]; },
+                // 計算當前年度閱讀的總本數
                 currentYearCount() {
                     if (!this.currentData || !this.currentData.history) return 0;
                     const currentYear = new Date().getFullYear().toString();
@@ -183,7 +210,7 @@
                         return item.date && item.date.includes(currentYear) && item.action === '讀書加點';
                     }).length;
                 },
-                // 🐾 關鍵邏輯：六宮格版印章數量計算
+                // 🐾 🌟 關鍵邏輯：六宮格版印章數量計算
                 currentStampCount() {
                     const count = this.currentYearCount;
                     if (count === 0) return 0;
@@ -199,6 +226,7 @@
                         const resData = await response.json();
                         if (resData.success && resData.data) {
                             const newDb = { S: { points: 0, history: [] }, F: { points: 0, history: [] } };
+                            
                             resData.data.forEach(item => {
                                 const user = item.user;
                                 if (newDb[user]) {
@@ -213,7 +241,11 @@
                             this.db = newDb;
                             localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
                         }
-                    } catch (e) { console.error("同步失敗:", e); } finally { this.loading = false; }
+                    } catch (e) {
+                        console.error("雲端同步失敗:", e);
+                    } finally {
+                        this.loading = false;
+                    }
                 },
                 async syncToCloud(payload) {
                     this.loading = true;
@@ -226,20 +258,28 @@
                     if (!this.form.title.trim()) return alert('請輸入書名');
                     const data = { ...this.form, action: '讀書加點', user: this.currentUser, date: new Date().toLocaleDateString('zh-TW') };
                     this.showForm = false;
+                    
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
                     this.form = { title: '', author: '', publisher: '' };
                     localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
+                    
                     await this.syncToCloud(data);
                     await this.fetchFromCloud();
                 },
-                openRedeemModal() { this.redeemBookName = ''; this.showRedeemModal = true; },
+                openRedeemModal() {
+                    this.redeemBookName = '';
+                    this.showRedeemModal = true;
+                },
                 async handleRedeem() {
                     if (this.currentData.points < 2) return alert('點數不足');
-                    if (!this.redeemBookName.trim()) return alert('請填寫書名');
+                    if (!this.redeemBookName.trim()) return alert('請填寫預計購買之書名');
+                    
                     this.showRedeemModal = false;
+                    const dateStr = new Date().toLocaleDateString('zh-TW');
+                    
                     const singleRecord = {
-                        date: new Date().toLocaleDateString('zh-TW'),
+                        date: dateStr,
                         user: this.currentUser,
                         title: "兌換額度 (1本)",
                         author: "",
@@ -247,11 +287,16 @@
                         action: '扣點',
                         buyBook: `${this.redeemBookName.trim()} (消耗 2 點)`
                     };
+                    
                     this.currentData.points -= 2;
                     this.currentData.history.push(singleRecord);
                     localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
+                    
                     await this.syncToCloud(singleRecord);
-                    setTimeout(async () => { await this.fetchFromCloud(); }, 1500);
+                    
+                    setTimeout(async () => {
+                        await this.fetchFromCloud();
+                    }, 1500);
                 }
             },
             mounted() {
