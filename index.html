@@ -6,10 +6,11 @@
     <title>拯救書庫 Project</title>
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="icon" type="image/png" href="icon.png">
+    
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght=400;500;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
         body { 
             font-family: 'Noto Sans TC', sans-serif; 
             background-color: #ebe8e0; 
@@ -25,6 +26,16 @@
             -webkit-backdrop-filter: blur(8px);
         }
         body::-webkit-scrollbar { display: none; }
+        
+        /* 🐾 貓掌落下的微動畫 */
+        .paw-stamp {
+            animation: stampIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            color: #f8a5c2 !important; /* 🌟 統一指定為妳最愛的粉紅色 */
+        }
+        @keyframes stampIn {
+            0% { transform: scale(3); opacity: 0; }
+            100% { transform: scale(1); opacity: 0.9; }
+        }
     </style>
 </head>
 <body class="min-h-screen text-stone-800 p-4">
@@ -34,10 +45,10 @@
         <header class="mb-3">
             <div class="flex justify-between items-center bg-white/40 p-1 rounded-xl border border-stone-200/40 backdrop-blur-sm">
                 <button @click="currentUser = 'S'" 
-                        :class="currentUser === 'S' ? 'bg-slate-500 text-white font-black' : 'text-stone-400'"
+                        :class="currentUser === 'S' ? 'bg-slate-500 text-white font-black shadow-sm' : 'text-stone-400'"
                         class="flex-1 py-1.5 rounded-lg transition-all text-center text-xs">S</button>
                 <button @click="currentUser = 'F'" 
-                        :class="currentUser === 'F' ? 'bg-[#5c4033] text-white font-black' : 'text-stone-400'"
+                        :class="currentUser === 'F' ? 'bg-[#5c4033] text-white font-black shadow-sm' : 'text-stone-400'"
                         class="flex-1 py-1.5 rounded-lg transition-all text-center text-xs">F</button>
             </div>
         </header>
@@ -55,6 +66,23 @@
                     <span>累積點數：{{ currentData.points }}</span>
                     <span class="text-stone-300">|</span>
                     <span>今年閱讀量：{{ currentYearCount }} 本</span>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-[1rem] shadow-lg border border-white/40 p-4 mb-3">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-[10px] font-black text-stone-400 uppercase tracking-wider">🐾 {{ currentUser }} 的閱讀集點卡</h3>
+                    <span class="text-[9px] font-bold text-stone-400 bg-white/50 px-1.5 py-0.5 rounded">
+                        本輪進度: {{ currentStampCount }}/6
+                    </span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div v-for="i in 6" :key="i" 
+                         class="aspect-square bg-stone-100/60 border border-stone-200/40 rounded-xl flex items-center justify-center relative overflow-hidden shadow-inner">
+                        <span v-if="i <= currentStampCount" 
+                              class="text-3xl paw-stamp select-none">🐾</span>
+                        <span v-else class="text-[10px] font-bold text-stone-300/60 select-none">{{ i }}</span>
+                    </div>
                 </div>
             </div>
 
@@ -114,14 +142,11 @@
             <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl text-center flex flex-col">
                 <h3 class="text-lg font-black mb-1 uppercase tracking-tight">兌換購書額度</h3>
                 <p class="text-xs text-stone-400 mb-4">本次將兌換 1 本書，固定消耗 2 點</p>
-                
                 <div class="text-left mb-4">
                     <label class="text-[10px] font-bold text-stone-400 block mb-1 ml-1">欲購買之書名 *</label>
                     <input v-model="redeemBookName" placeholder="請輸入打算購買的書名" class="w-full bg-stone-50 px-4 py-3 rounded-xl text-sm outline-none border border-stone-100 focus:border-stone-200">
                 </div>
-
                 <p class="text-xs font-bold my-2 text-stone-500">將消耗 2 點</p>
-                
                 <div class="flex gap-3 pt-4 border-t border-stone-50">
                     <button @click="showRedeemModal = false" class="flex-1 text-stone-400 font-bold text-sm">取消</button>
                     <button @click="handleRedeem" :disabled="loading || !redeemBookName.trim()"
@@ -140,11 +165,11 @@
         createApp({
             data() {
                 return {
-                    currentUser: 'S',
+                    currentUser: 'S', // 🌟 已更改為預設開啟 S
                     loading: false,
                     showForm: false,
                     showRedeemModal: false,
-                    redeemBookName: '', // 單本欲購書名
+                    redeemBookName: '',
                     form: { title: '', author: '', publisher: '' },
                     db: { S: { points: 0, history: [] }, F: { points: 0, history: [] } }
                 }
@@ -157,6 +182,13 @@
                     return this.currentData.history.filter(item => {
                         return item.date && item.date.includes(currentYear) && item.action === '讀書加點';
                     }).length;
+                },
+                // 🐾 關鍵邏輯：六宮格版印章數量計算
+                currentStampCount() {
+                    const count = this.currentYearCount;
+                    if (count === 0) return 0;
+                    const remainder = count % 6;
+                    return remainder === 0 ? 6 : remainder;
                 }
             },
             methods: {
@@ -167,27 +199,21 @@
                         const resData = await response.json();
                         if (resData.success && resData.data) {
                             const newDb = { S: { points: 0, history: [] }, F: { points: 0, history: [] } };
-                            
                             resData.data.forEach(item => {
                                 const user = item.user;
                                 if (newDb[user]) {
                                     newDb[user].history.push(item);
-                                    
                                     if (item.action === '讀書加點') {
                                         newDb[user].points += 1;
                                     } else if (item.action === '扣點') {
-                                        newDb[user].points -= 2; // 每一列固定正確扣回 2 點
+                                        newDb[user].points -= 2;
                                     }
                                 }
                             });
                             this.db = newDb;
                             localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
                         }
-                    } catch (e) {
-                        console.error("雲端讀取失敗:", e);
-                    } finally {
-                        this.loading = false;
-                    }
+                    } catch (e) { console.error("同步失敗:", e); } finally { this.loading = false; }
                 },
                 async syncToCloud(payload) {
                     this.loading = true;
@@ -200,48 +226,32 @@
                     if (!this.form.title.trim()) return alert('請輸入書名');
                     const data = { ...this.form, action: '讀書加點', user: this.currentUser, date: new Date().toLocaleDateString('zh-TW') };
                     this.showForm = false;
-                    
                     this.currentData.points += 1;
                     this.currentData.history.push(data);
                     this.form = { title: '', author: '', publisher: '' };
                     localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
-                    
                     await this.syncToCloud(data);
                     await this.fetchFromCloud();
                 },
-                openRedeemModal() {
-                    this.redeemBookName = '';
-                    this.showRedeemModal = true;
-                },
+                openRedeemModal() { this.redeemBookName = ''; this.showRedeemModal = true; },
                 async handleRedeem() {
                     if (this.currentData.points < 2) return alert('點數不足');
-                    if (!this.redeemBookName.trim()) return alert('請填寫預計購買之書名');
-                    
+                    if (!this.redeemBookName.trim()) return alert('請填寫書名');
                     this.showRedeemModal = false;
-                    const dateStr = new Date().toLocaleDateString('zh-TW');
-                    
-                    // 🌟 重新校準的完美 7 欄對齊資料包
                     const singleRecord = {
-                        date: dateStr,                           // A 欄: 時間
-                        user: this.currentUser,                  // B 欄: 身分
-                        title: "兌換額度 (1本)",                 // C 欄: 書名
-                        author: "",                              // D 欄: 作者 (留空)
-                        publisher: "",                           // E 欄: 出版社 (留空)
-                        action: '扣點',                          // F 欄: 動作
-                        buyBook: `${this.redeemBookName.trim()} (消耗 2 點)` // G 欄: 買書 🌟 完美歸位！
+                        date: new Date().toLocaleDateString('zh-TW'),
+                        user: this.currentUser,
+                        title: "兌換額度 (1本)",
+                        author: "",
+                        publisher: "",
+                        action: '扣點',
+                        buyBook: `${this.redeemBookName.trim()} (消耗 2 點)`
                     };
-                    
-                    // 本地先行扣點與更新畫面
                     this.currentData.points -= 2;
                     this.currentData.history.push(singleRecord);
                     localStorage.setItem('sf_reading_project_sync', JSON.stringify(this.db));
-                    
-                    // 同步到雲端試算表
                     await this.syncToCloud(singleRecord);
-                    
-                    setTimeout(async () => {
-                        await this.fetchFromCloud();
-                    }, 1500);
+                    setTimeout(async () => { await this.fetchFromCloud(); }, 1500);
                 }
             },
             mounted() {
@@ -253,3 +263,5 @@
     </script>
 </body>
 </html>
+
+妳的專屬「拯救書庫」系統已經全面升級完成！快去換上新的程式碼，體驗那個美美的粉紅貓掌印章吧！祝閱讀愉快！🐾🌸
